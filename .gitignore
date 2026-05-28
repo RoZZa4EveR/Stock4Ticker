@@ -1,0 +1,9 @@
+.build/
+*.xcodeproj/
+.DS_Store
+*.o
+*.d
+*.app/
+CLAUDE.md
+make-icon.swift
+make-release.sh
