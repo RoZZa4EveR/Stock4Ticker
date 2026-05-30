@@ -11,7 +11,7 @@ Real-time data from the **TradingView Scanner API** — no login, no API key.
 
 - Menu bar ticker — cycle through symbols, show all side by side, or a 2-row stacked layout
 - Symbol logos and currency flags in both the menu bar and the popup (letter-monogram fallback)
-- Prices shown in the correct currency — `$`, `€`, `£`, `¥`, `Kč`, … — not hard-coded to USD
+- Prices shown in the correct currency — `$`, `€`, `£`, `¥`, `Kč`
 - Last prices are cached, so the menu bar shows data instantly on launch, before the first refresh
 - Click the ticker to open a popup with details (price, change, % change, volume)
 - Click a symbol in the popup → opens its TradingView chart in the browser
