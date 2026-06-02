@@ -112,10 +112,17 @@ final class StockStore: ObservableObject {
         do {
             let fetched = try await service.fetchQuotes(for: symbols)
             dbg("OK: \(fetched.map { "\($0.symbol)=\($0.price)" })")
-            stocks = fetched
-            lastUpdated = Date()
-            if let encoded = try? JSONEncoder().encode(fetched) {
-                ud.set(encoded, forKey: Keys.cachedQuotes)
+            // Prázdná odpověď při neprázdném seznamu = nejspíš rate-limit (scanner
+            // vrací HTTP 200 s prázdným polem při příliš častém dotazování, např. 1 s).
+            // Nepřepisuj poslední dobrá data prázdnem — symboly by zmizely z lišty.
+            if fetched.isEmpty {
+                dbg("prázdná odpověď – ponechávám poslední data")
+            } else {
+                stocks = fetched
+                lastUpdated = Date()
+                if let encoded = try? JSONEncoder().encode(fetched) {
+                    ud.set(encoded, forKey: Keys.cachedQuotes)
+                }
             }
         } catch {
             dbg("CHYBA: \(error)")
@@ -162,8 +169,10 @@ final class StockStore: ObservableObject {
                 cached.first { $0.fullSymbol == sym || $0.fullSymbol.hasSuffix(":\(sym)") }
             }
         }
+        // Minimum 5 s — kratší interval (dříve nabízená 1 s) vede k rate-limitu,
+        // scanner pak vrací prázdné odpovědi. Starší uloženou 1 s zvedni na 5 s.
         let ri = ud.double(forKey: Keys.refreshInterval)
-        refreshInterval = ri > 0 ? ri : 30
+        refreshInterval = ri >= 5 ? ri : (ri > 0 ? 5 : 30)
         let ci = ud.double(forKey: Keys.cycleInterval)
         cycleInterval = ci > 0 ? ci : 3
         if let raw = ud.string(forKey: Keys.showInMenuBar),
