@@ -23,6 +23,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var clickMonitor: Any?
     /// Vlastní NSView pro mód "pod sebou" — přidána jako subview buttonu
     private var stackedCustomView: NSView?
+    /// Podpis naposledy vykresleného obsahu lišty. updateLabel() přeskočí
+    /// překreslení, když se podpis nezměnil — jinak by se při krátkém refreshi
+    /// (1 s) stacked NSView strhával a stavěl několikrát za sekundu (z $stocks
+    /// i z dvou $isLoading přepnutí na fetch) a symboly by problikávaly.
+    private var lastRenderSignature: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
@@ -72,6 +77,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // itemu by ukotveným popoverem cukala. Vše se sesynchronizuje při zavření.
         if isPopoverOpen { return }
 
+        // Když se vykreslovaný obsah proti minule nezměnil, nepřekresluj — zabrání
+        // to problikávání stacked NSView při krátkém refresh intervalu.
+        let sig = renderSignature()
+        if sig == lastRenderSignature { return }
+        lastRenderSignature = sig
+
         // Loading/empty stav
         if store.isLoading && store.stocks.isEmpty {
             clearStackedView(btn: btn)
@@ -107,6 +118,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Vlastní NSView: symbol nahoře, cena dole, tickery vedle sebe
             buildStackedView(btn: btn)
         }
+    }
+
+    /// Řetězec popisující, co se má vykreslit. Stejný podpis = stejný obraz =
+    /// netřeba překreslovat. Zahrnuje mód, (u cyklování) index a hodnoty tickerů.
+    private func renderSignature() -> String {
+        if store.isLoading && store.stocks.isEmpty { return "loading" }
+        guard !store.stocks.isEmpty else { return "empty" }
+        let idx = store.showInMenuBar == .cycling ? currentIndex : -1
+        let body = store.stocks
+            .map { "\($0.symbol)|\($0.formattedPrice)|\($0.formattedChangePercent)|\($0.isPositive)" }
+            .joined(separator: ",")
+        return "\(store.showInMenuBar.rawValue)#\(idx)#\(body)"
+    }
+
+    /// Vynutí překreslení i když se podpis nezměnil — pro async události, které
+    /// mění vzhled bez změny hodnot (donačtení loga).
+    private func forceUpdateLabel() {
+        lastRenderSignature = nil
+        updateLabel()
     }
 
     // MARK: - Stacked NSView layout
@@ -235,7 +265,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Ikona pro lištu: logo (pokud načtené), jinak monogram kolečko.
     private func menuBarIcon(for stock: Stock, size: CGFloat) -> NSImage {
         if let url = stock.logoURL,
-           let img = LogoLoader.shared.image(for: url, onLoad: { [weak self] in self?.updateLabel() }) {
+           let img = LogoLoader.shared.image(for: url, onLoad: { [weak self] in self?.forceUpdateLabel() }) {
             return menuBarBadge(img, size: size)
         }
         return monogramBadge(stock.symbol, size: size)
@@ -325,7 +355,8 @@ extension AppDelegate: NSPopoverDelegate {
         // Odeber monitor, rozmraz lištu, sesynchronizuj obsah a rozjeď cyklování.
         if let m = clickMonitor { NSEvent.removeMonitor(m); clickMonitor = nil }
         isPopoverOpen = false
-        updateLabel()
+        // Lišta byla zmrazená — vynuť překreslení, ať se spolehlivě sesynchronizuje.
+        forceUpdateLabel()
         startCycleTimer()
     }
 }
