@@ -67,9 +67,24 @@ EOF
 
 echo ""
 echo "✅ Created: $APP_DIR"
-echo ""
-echo "Spustit:"
-echo "  open $APP_DIR"
-echo ""
-echo "Přesunout do Applications:"
-echo "  mv $APP_DIR /Applications/$APP_DIR"
+
+# Volitelná instalace do /Applications: ./make-app.sh --install
+if [ "$1" = "--install" ]; then
+    DEST="/Applications/$APP_DIR"
+    echo ""
+    echo "📲 Installing to $DEST ..."
+    # rm -rf nejdřív: cp -R do existující složky by vytvořil vnořenou kopii
+    rm -rf "$DEST"
+    cp -R "$APP_DIR" "$DEST"
+    echo "✅ Installed: $DEST"
+    echo ""
+    echo "Spustit:"
+    echo "  open $DEST"
+else
+    echo ""
+    echo "Spustit:"
+    echo "  open $APP_DIR"
+    echo ""
+    echo "Nainstalovat do Applications (smaže starou verzi a zkopíruje novou):"
+    echo "  ./make-app.sh --install"
+fi

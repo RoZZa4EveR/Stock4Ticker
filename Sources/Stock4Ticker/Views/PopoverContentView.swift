@@ -222,6 +222,7 @@ struct PopoverContentView: View {
                 Text("Refresh").foregroundStyle(.secondary)
                 Spacer()
                 Picker("", selection: $store.refreshInterval) {
+                    Text("1s").tag(1.0 as TimeInterval)
                     Text("5s").tag(5.0 as TimeInterval)
                     Text("15s").tag(15.0 as TimeInterval)
                     Text("30s").tag(30.0 as TimeInterval)
